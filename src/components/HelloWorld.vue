@@ -1,113 +1,85 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <h2>Essential Links</h2>
-    <ul>
-      <li>
-        <a
-          href="https://vuejs.org"
-          target="_blank"
-        >
-          Core Docs
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://forum.vuejs.org"
-          target="_blank"
-        >
-          Forum
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://chat.vuejs.org"
-          target="_blank"
-        >
-          Community Chat
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://twitter.com/vuejs"
-          target="_blank"
-        >
-          Twitter
-        </a>
-      </li>
-      <br>
-      <li>
-        <a
-          href="http://vuejs-templates.github.io/webpack/"
-          target="_blank"
-        >
-          Docs for This Template
-        </a>
-      </li>
-    </ul>
-    <h2>Ecosystem</h2>
-    <ul>
-      <li>
-        <a
-          href="http://router.vuejs.org/"
-          target="_blank"
-        >
-          vue-router
-        </a>
-      </li>
-      <li>
-        <a
-          href="http://vuex.vuejs.org/"
-          target="_blank"
-        >
-          vuex
-        </a>
-      </li>
-      <li>
-        <a
-          href="http://vue-loader.vuejs.org/"
-          target="_blank"
-        >
-          vue-loader
-        </a>
-      </li>
-      <li>
-        <a
-          href="https://github.com/vuejs/awesome-vue"
-          target="_blank"
-        >
-          awesome-vue
-        </a>
-      </li>
-    </ul>
+  <div>
+    <h2>Lottery contract</h2>
+    <p>
+      This contract is managed by {{ manager }}. <br> There are currently {{ players.length }} people entered, competing to win {{ balance | wei }} ether!
+    </p>
+
+    <hr>
+
+    <form @submit.prevent="submited">
+      <h4>Want to try your luck?</h4>
+      <div>
+        <label for="Amount">Amount of ether to enter</label>
+        <input type="text" v-model="value">
+      </div>
+      <button type="submit">Enter</button>
+    </form>
+
+    <hr>
+
+    <h4>Read to pick a winner?</h4>
+    <button @click="winnerHandle">Pick a winner</button>
+
+    <hr>
+
+    <h1>{{ message }}</h1>
   </div>
 </template>
 
 <script>
+import web3 from '@/libraries/web3'
+import lottery from '@/libraries/lottery'
+
 export default {
   name: 'HelloWorld',
-  data () {
+  async mounted() {
+    const manager = await lottery.methods.manager().call()
+    const players = await lottery.methods.getPlayers().call()
+    const balance = await web3.eth.getBalance(lottery.options.address)
+
+    this.manager = manager
+    this.players = players
+    this.balance = balance
+  },
+  data() {
     return {
-      msg: 'Welcome to Your Vue.js App'
+      manager: '',
+      players: [],
+      balance: '',
+      value: '',
+      message: ''
+    }
+  },
+  filters: {
+    wei(balance) {
+      return web3.utils.fromWei(balance, 'ether')
+    }
+  },
+  methods: {
+    async submited() {
+      const accounts = await web3.eth.getAccounts()
+
+      this.message = 'Waiting on transaction success...'
+
+      await lottery.methods.enter().send({
+        from: accounts[0],
+        value: web3.utils.toWei(this.value, 'ether')
+      })
+
+      this.message = 'You have been entered!'
+    },
+    async winnerHandle() {
+      const accounts = await web3.eth.getAccounts()
+
+      this.message = 'Waiting on transaction success...'
+
+      await lottery.methods.pickWinner().send({
+        from: accounts[0]
+      })
+
+      this.message = 'A winner has been picked!'
     }
   }
 }
 </script>
-
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-h1, h2 {
-  font-weight: normal;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
-}
-</style>
